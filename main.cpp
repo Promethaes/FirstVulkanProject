@@ -164,6 +164,7 @@ private:
 
 	void initVulkan() {
 		createInstance();
+		setupDebugMessanger();
 	}
 
 	void setupDebugMessanger() {
