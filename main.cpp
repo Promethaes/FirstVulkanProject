@@ -8,6 +8,7 @@
 #include <string>
 #include <cstring>
 #include <optional>
+#include <set>
 
 const auto WINDOW_NAME = "VulkanProjectOne";
 const uint32_t WIDTH = 800;
@@ -50,11 +51,17 @@ public:
 
 private:
 	GLFWwindow* _window;
+	VkSurfaceKHR surface;
 	VkInstance instance;
+	
 	VkDebugUtilsMessengerEXT debugMessenger;
+	
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
+	
 	VkQueue graphicsQueue;
+	VkQueue presentQueue;
+	
 
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
 		createInfo = {};
@@ -169,7 +176,15 @@ private:
 	void initVulkan() {
 		createInstance();
 		setupDebugMessanger();
+		createSurface();
 		pickPhysicalDevice();
+		createLogicalDevice();
+	}
+
+	void createSurface() {
+		if (glfwCreateWindowSurface(instance, _window, nullptr, &surface) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create window surface!");
+
 	}
 
 	void createLogicalDevice() {
@@ -238,9 +253,10 @@ private:
 	}
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
+		std::optional<uint32_t> presentFamily;
 
 		bool isComplete() {
-			return graphicsFamily.has_value();
+			return graphicsFamily.has_value() && presentFamily.has_value();
 		}
 	};
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
@@ -254,8 +270,12 @@ private:
 
 		int i = 0;
 		for (const auto& queueFamily : queueFamilies) {
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				indices.graphicsFamily = i;
+			if (presentSupport)
+				indices.presentFamily = i;
 			if (indices.isComplete()) 
 				break;
 			
@@ -286,6 +306,7 @@ private:
 		if (enableValidationLayers) 
 			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 		
+		vkDestroySurfaceKHR(instance, surface, nullptr);
 		vkDestroyInstance(instance, nullptr);
 		glfwDestroyWindow(_window);
 		glfwTerminate();
